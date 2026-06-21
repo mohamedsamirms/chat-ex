@@ -51,6 +51,7 @@ def handle_message(data):
     
     # Restructured to pass variable payload structures dynamically
     msg_obj = {
+        'id': len(chat_history),  # Assign unique ID based on position
         'username': data.get('username', 'ANONYMOUS'),
         'type': data.get('type', 'text'),
         'text': data.get('text', ''),
@@ -71,6 +72,27 @@ def handle_message(data):
         
     # Broadcast to all connected browsers instantly
     emit('chat message', msg_obj, broadcast=True)
+
+@socketio.on('delete message')
+def handle_delete_message(data):
+    msg_id = data.get('id')
+    if msg_id is not None and 0 <= msg_id < len(chat_history):
+        # Remove the message
+        chat_history.pop(msg_id)
+        
+        # Reassign IDs to remaining messages
+        for idx, msg in enumerate(chat_history):
+            msg['id'] = idx
+        
+        # Save updated history to file
+        try:
+            with open(DATA_FILE, 'w', encoding='utf-8') as f:
+                json.dump(chat_history, f, indent=4)
+        except Exception as e:
+            print(f"Error saving after deletion: {e}")
+        
+        # Broadcast deletion to all clients
+        emit('message deleted', {'id': msg_id}, broadcast=True)
 
 @socketio.on('typing')
 def handle_typing(username):

@@ -231,6 +231,7 @@ function renderMessageItem(msg) {
     
     const messageItem = document.createElement('li');
     messageItem.classList.add('message-wrapper');
+    messageItem.setAttribute('data-message-id', msg.id);
     
     if (msg.username === localClientUsername) {
         messageItem.style.alignSelf = 'flex-end';
@@ -259,13 +260,27 @@ function renderMessageItem(msg) {
         }
     }
 
+    const deleteButtonHtml = msg.username === localClientUsername ? 
+        `<button class="msg-delete-btn" title="Delete message">✕</button>` : '';
+
     messageItem.innerHTML = `
-        ${innerContentHtml}
+        <div style="display: flex; gap: 8px; align-items: flex-start;">
+            ${innerContentHtml}
+            ${deleteButtonHtml}
+        </div>
         <div class="msg-meta">
             <span>${msg.username}</span>
             <span>${msg.time}</span>
         </div>
     `;
+    
+    // Add delete button event listener
+    if (msg.username === localClientUsername) {
+        const deleteBtn = messageItem.querySelector('.msg-delete-btn');
+        deleteBtn.addEventListener('click', () => {
+            socket.emit('delete message', { id: msg.id });
+        });
+    }
     
     messagesList.appendChild(messageItem);
 }
@@ -303,4 +318,17 @@ socket.on('typing', (username) => {
     remoteTypingTimeout = setTimeout(() => {
         typingIndicator.classList.add('hidden');
     }, 2000);
+});
+
+// Handle message deletion
+socket.on('message deleted', (data) => {
+    const messageElement = messagesList.querySelector(`[data-message-id="${data.id}"]`);
+    if (messageElement) {
+        messageElement.remove();
+    }
+    
+    // If no messages left, show empty state
+    if (messagesList.children.length === 0 && emptyState) {
+        emptyState.classList.remove('hidden');
+    }
 });
