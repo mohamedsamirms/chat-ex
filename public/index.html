@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    
     <div class="app-container">
         <header>
             <div class="header-left">
@@ -47,14 +48,16 @@
                 </div>
             </div>
             <form id="chat-form">
-                <input id="chat-input" type="text" placeholder="ENTER A MESSAGE HERE" autocomplete="off" />
+                <input id="chat-input" type="text" placeholder="ENTER A MESSAGE HERE [or maybe a nuclear code]" autocomplete="off" />
                 <button type="button" class="emoji-tray-btn">☺+</button>
                 <button type="submit" class="send-btn">
                     <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
                         <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
                     </svg>
                 </button>
+                
             </form>
+                <p>Made by xonra</p>
         </footer>
     </div>
 
@@ -77,6 +80,7 @@
             </form>
         </div>
     </div>
+
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="script.js"></script>
