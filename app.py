@@ -49,9 +49,14 @@ def handle_disconnect():
 def handle_message(data):
     current_time = datetime.now().strftime("%I:%M, %m/%d").lstrip("0")
     
+    # Restructured to pass variable payload structures dynamically
     msg_obj = {
         'username': data.get('username', 'ANONYMOUS'),
+        'type': data.get('type', 'text'),
         'text': data.get('text', ''),
+        'url': data.get('url', ''),
+        'filename': data.get('filename', ''),
+        'fileType': data.get('fileType', ''),
         'time': current_time
     }
     

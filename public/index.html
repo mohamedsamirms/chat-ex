@@ -35,9 +35,16 @@
         </div>
 
         <footer>
-            <div class="footer-left-buttons">
-                <button type="button" class="icon-circle-btn">+</button>
-                <button type="button" class="gif-rect-btn">GIF</button>
+            <div class="footer-left-buttons" style="position: relative;">
+                <input type="file" id="file-attachment-input" class="hidden">
+                
+                <button type="button" class="icon-circle-btn" id="plus-btn">+</button>
+                <button type="button" class="gif-rect-btn" id="gif-toggle-btn">GIF</button>
+
+                <div id="gif-popover" class="gif-popover-panel hidden">
+                    <input type="text" id="gif-search-field" placeholder="SEARCH GIPHY..." autocomplete="off">
+                    <div id="gif-results-grid"></div>
+                </div>
             </div>
             <form id="chat-form">
                 <input id="chat-input" type="text" placeholder="ENTER A MESSAGE HERE" autocomplete="off" />

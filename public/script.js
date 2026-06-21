@@ -17,10 +17,32 @@ const emptyState = document.getElementById('empty-state');
 const activeCount = document.getElementById('active-count');
 const typingIndicator = document.getElementById('typing-indicator');
 
+// Newly Added Target Controls
+const plusBtn = document.getElementById('plus-btn');
+const fileAttachmentInput = document.getElementById('file-attachment-input');
+const gifToggleBtn = document.getElementById('gif-toggle-btn');
+const gifPopover = document.getElementById('gif-popover');
+const gifSearchField = document.getElementById('gif-search-field');
+const gifResultsGrid = document.getElementById('gif-results-grid');
+
 let localClientUsername = '';
 let remoteTypingTimeout;
 let isCurrentlyTyping = false;
 let localTypingCooldown;
+
+// GIPHY API Public Key configuration reference
+const GIPHY_API_KEY = "dc6zaTOxFJmzC"; 
+
+// --- FEATURE: INITIAL USERNAME AUTO-FILL RETRIEVAL ---
+document.addEventListener('DOMContentLoaded', () => {
+    const cachedName = localStorage.getItem('chat_saved_username');
+    if (cachedName) {
+        localClientUsername = cachedName.toUpperCase();
+        usernameInput.value = localClientUsername;
+        usernameModal.classList.add('hidden');
+        chatInput.focus();
+    }
+});
 
 // Name assignment logic
 usernameForm.addEventListener('submit', (e) => {
@@ -28,6 +50,10 @@ usernameForm.addEventListener('submit', (e) => {
     const cleanValue = usernameInput.value.trim();
     if (cleanValue) {
         localClientUsername = cleanValue.toUpperCase();
+        
+        // Save name value into storage cache permanently
+        localStorage.setItem('chat_saved_username', localClientUsername);
+        
         usernameModal.classList.add('hidden');
         chatInput.focus();
     }
@@ -35,7 +61,7 @@ usernameForm.addEventListener('submit', (e) => {
 
 settingsBtn.addEventListener('click', () => {
     settingsModal.classList.remove('hidden');
-    newUsernameInput.value = '';
+    newUsernameInput.value = localClientUsername;
     newUsernameInput.focus();
 });
 
@@ -44,6 +70,10 @@ settingsForm.addEventListener('submit', (e) => {
     const changedValue = newUsernameInput.value.trim();
     if (changedValue) {
         localClientUsername = changedValue.toUpperCase();
+        
+        // Sync updated modifications back into storage cache
+        localStorage.setItem('chat_saved_username', localClientUsername);
+        
         settingsModal.classList.add('hidden');
     }
 });
@@ -54,6 +84,114 @@ settingsModal.addEventListener('click', (e) => {
     }
 });
 
+// --- FEATURE: FILE ATTACHMENT DRIVERS ---
+plusBtn.addEventListener('click', () => {
+    fileAttachmentInput.click();
+});
+
+fileAttachmentInput.addEventListener('change', (e) => {
+    const activeFile = e.target.files[0];
+    if (!activeFile || !localClientUsername) return;
+
+    const fileReader = new FileReader();
+    fileReader.onload = function(event) {
+        socket.emit('chat message', {
+            username: localClientUsername,
+            type: 'file',
+            text: event.target.result, // Contains the Base64 DataURL
+            filename: activeFile.name,
+            fileType: activeFile.type
+        });
+    };
+    fileReader.readAsDataURL(activeFile);
+    e.target.value = ''; // Flush file stream input array buffer
+});
+
+// --- FEATURE: GIPHY COMPONENT ENGINE ---
+gifToggleBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isHidden = gifPopover.classList.contains('hidden');
+    if (isHidden) {
+        gifPopover.classList.remove('hidden');
+        fetchTrendingGifs();
+    } else {
+        gifPopover.classList.add('hidden');
+    }
+});
+
+// Avoid panel dismissal while utilizing text inputs within the popup context overlay frame
+gifPopover.addEventListener('click', (e) => e.stopPropagation());
+document.addEventListener('click', () => gifPopover.classList.add('hidden'));
+
+let searchDebounceTimer;
+gifSearchField.addEventListener('input', (e) => {
+    clearTimeout(searchDebounceTimer);
+    const searchString = e.target.value.trim();
+    
+    searchDebounceTimer = setTimeout(() => {
+        if (searchString) {
+            queryGiphySearch(searchString);
+        } else {
+            fetchTrendingGifs();
+        }
+    }, 400);
+});
+
+async function fetchTrendingGifs() {
+    const url = `https://api.giphy.com/v1/gifs/trending?api_key=${GIPHY_API_KEY}&limit=9&rating=g`;
+    try {
+        const response = await fetch(url);
+        const parsed = await response.json();
+        populateGifGrid(parsed.data);
+    } catch (err) {
+        console.error("Giphy target connection error:", err);
+    }
+}
+
+async function queryGiphySearch(term) {
+    const url = `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(term)}&limit=9&offset=0&rating=g&lang=en`;
+    try {
+        const response = await fetch(url);
+        const parsed = await response.json();
+        populateGifGrid(parsed.data);
+    } catch (err) {
+        console.error("Giphy query error:", err);
+    }
+}
+
+function populateGifGrid(gifObjectsArray) {
+    gifResultsGrid.innerHTML = '';
+    if (!gifObjectsArray || gifObjectsArray.length === 0) {
+        gifResultsGrid.innerHTML = '<div style="font-size:0.75rem; text-align:center; padding:10px; color:#000;">NO GIFS FOUND</div>';
+        return;
+    }
+    
+    gifObjectsArray.forEach(gifItem => {
+        const outputSourceUrl = gifItem.images.fixed_height.url;
+        const thumbnailSourceUrl = gifItem.images.fixed_height_small.url;
+        
+        const imgElement = document.createElement('img');
+        imgElement.src = thumbnailSourceUrl;
+        imgElement.style.width = "100%";
+        imgElement.style.height = "75px";
+        imgElement.style.objectFit = "cover";
+        imgElement.style.cursor = "pointer";
+        
+        imgElement.addEventListener('click', () => {
+            if (!localClientUsername) return;
+            socket.emit('chat message', {
+                username: localClientUsername,
+                type: 'gif',
+                url: outputSourceUrl
+            });
+            gifPopover.classList.add('hidden');
+            gifSearchField.value = '';
+        });
+        
+        gifResultsGrid.appendChild(imgElement);
+    });
+}
+
 // Message Outbound Event Sender
 chatForm.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -61,6 +199,7 @@ chatForm.addEventListener('submit', (e) => {
     if (textMsg && localClientUsername) {
         socket.emit('chat message', {
             username: localClientUsername,
+            type: 'text',
             text: textMsg
         });
         chatInput.value = '';
@@ -98,8 +237,30 @@ function renderMessageItem(msg) {
         messageItem.style.alignItems = 'flex-end';
     }
 
+    // Adapt layout context blocks by rendering raw text, interactive downloaded items, or media blocks
+    let innerContentHtml = '';
+    
+    if (!msg.type || msg.type === 'text') {
+        innerContentHtml = `<div class="msg-bubble">${msg.text}</div>`;
+    } 
+    else if (msg.type === 'gif') {
+        innerContentHtml = `<div class="msg-bubble" style="padding: 8px;"><img src="${msg.url}" style="max-width: 100%; border-radius: 12px; display: block;" alt="GIF content"></div>`;
+    } 
+    else if (msg.type === 'file') {
+        if (msg.fileType && msg.fileType.startsWith('image/')) {
+            innerContentHtml = `<div class="msg-bubble" style="padding: 8px;"><img src="${msg.text}" style="max-width: 100%; border-radius: 12px; display: block;" alt="Uploaded Attachment"><div style="font-size:0.75rem; color:#444; margin-top:4px; text-align:center;">${msg.filename}</div></div>`;
+        } else {
+            innerContentHtml = `
+                <div class="msg-bubble" style="font-size: 1rem; padding: 14px 20px;">
+                    <a href="${msg.text}" download="${msg.filename}" style="color: #000; text-decoration: underline; display: flex; align-items: center; gap: 8px;">
+                        📁 DOWNLOAD FILE:<br>${msg.filename.toUpperCase()}
+                    </a>
+                </div>`;
+        }
+    }
+
     messageItem.innerHTML = `
-        <div class="msg-bubble">${msg.text}</div>
+        ${innerContentHtml}
         <div class="msg-meta">
             <span>${msg.username}</span>
             <span>${msg.time}</span>

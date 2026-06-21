@@ -303,3 +303,54 @@ footer {
 .hidden {
     display: none !important;
 }
+
+/* --- APP COMPONENT EXPANSIONS --- */
+
+.gif-popover-panel {
+    position: absolute;
+    bottom: 55px;
+    left: 0;
+    width: 290px;
+    background: #ffffff;
+    border: var(--border-thick-black);
+    border-radius: 16px;
+    padding: 10px;
+    z-index: 1000;
+    box-shadow: 0px 8px 20px rgba(0,0,0,0.4);
+}
+
+#gif-search-field {
+    width: 100%;
+    border: 3px solid #000000;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 0.85rem;
+    color: #000000;
+    outline: none;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+
+#gif-results-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    max-height: 200px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+#gif-results-grid::-webkit-scrollbar {
+    width: 6px;
+}
+#gif-results-grid::-webkit-scrollbar-thumb {
+    background: #000000;
+    border-radius: 3px;
+}
+
+/* Adjust layout max widths for fluid visual image display objects */
+.message-wrapper img {
+    max-width: 100%;
+    height: auto;
+    border: 3px solid #000000;
+}
