@@ -228,62 +228,110 @@ function renderMessageItem(msg) {
     if (emptyState) {
         emptyState.classList.add('hidden');
     }
-    
+
     const messageItem = document.createElement('li');
     messageItem.classList.add('message-wrapper');
     messageItem.setAttribute('data-message-id', msg.id);
-    
+
     if (msg.username === localClientUsername) {
         messageItem.style.alignSelf = 'flex-end';
         messageItem.style.alignItems = 'flex-end';
     }
 
-    // Adapt layout context blocks by rendering raw text, interactive downloaded items, or media blocks
-    let innerContentHtml = '';
-    
-    if (!msg.type || msg.type === 'text') {
-        innerContentHtml = `<div class="msg-bubble">${msg.text}</div>`;
-    } 
-    else if (msg.type === 'gif') {
-        innerContentHtml = `<div class="msg-bubble" style="padding: 8px;"><img src="${msg.url}" style="max-width: 100%; border-radius: 12px; display: block;" alt="GIF content"></div>`;
-    } 
-    else if (msg.type === 'file') {
+    // IMPORTANT: never use innerHTML with user-controlled content.
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.gap = '8px';
+    row.style.alignItems = 'flex-start';
+
+    // Content
+    const type = msg.type || 'text';
+    let contentEl;
+
+    if (type === 'gif') {
+        contentEl = document.createElement('div');
+        contentEl.className = 'msg-bubble';
+        contentEl.style.padding = '8px';
+
+        const img = document.createElement('img');
+        img.alt = 'GIF content';
+        img.style.maxWidth = '100%';
+        img.style.borderRadius = '12px';
+        img.style.display = 'block';
+        img.src = msg.url || '';
+
+        contentEl.appendChild(img);
+    } else if (type === 'file') {
+        contentEl = document.createElement('div');
+        contentEl.className = 'msg-bubble';
+
         if (msg.fileType && msg.fileType.startsWith('image/')) {
-            innerContentHtml = `<div class="msg-bubble" style="padding: 8px;"><img src="${msg.text}" style="max-width: 100%; border-radius: 12px; display: block;" alt="Uploaded Attachment"><div style="font-size:0.75rem; color:#444; margin-top:4px; text-align:center;">${msg.filename}</div></div>`;
+            contentEl.style.padding = '8px';
+
+            const img = document.createElement('img');
+            img.alt = 'Uploaded Attachment';
+            img.style.maxWidth = '100%';
+            img.style.borderRadius = '12px';
+            img.style.display = 'block';
+            img.src = msg.text || '';
+
+            const filenameEl = document.createElement('div');
+            filenameEl.style.fontSize = '0.75rem';
+            filenameEl.style.color = '#444';
+            filenameEl.style.marginTop = '4px';
+            filenameEl.style.textAlign = 'center';
+            filenameEl.textContent = (msg.filename || '');
+
+            contentEl.appendChild(img);
+            contentEl.appendChild(filenameEl);
         } else {
-            innerContentHtml = `
-                <div class="msg-bubble" style="font-size: 1rem; padding: 14px 20px;">
-                    <a href="${msg.text}" download="${msg.filename}" style="color: #000; text-decoration: underline; display: flex; align-items: center; gap: 8px;">
-                        📁 DOWNLOAD FILE:<br>${msg.filename.toUpperCase()}
-                    </a>
-                </div>`;
+            // Non-image files are not supported safely here; show placeholder.
+            contentEl.style.fontSize = '1rem';
+            contentEl.style.padding = '14px 20px';
+            const placeholder = document.createElement('div');
+            placeholder.textContent = 'File type not supported.';
+            contentEl.appendChild(placeholder);
         }
+    } else {
+        contentEl = document.createElement('div');
+        contentEl.className = 'msg-bubble';
+        contentEl.textContent = msg.text || '';
     }
 
-    const deleteButtonHtml = msg.username === localClientUsername ? 
-        `<button class="msg-delete-btn" title="Delete message">✕</button>` : '';
+    row.appendChild(contentEl);
 
-    messageItem.innerHTML = `
-        <div style="display: flex; gap: 8px; align-items: flex-start;">
-            ${innerContentHtml}
-            ${deleteButtonHtml}
-        </div>
-        <div class="msg-meta">
-            <span>${msg.username}</span>
-            <span>${msg.time}</span>
-        </div>
-    `;
-    
-    // Add delete button event listener
+    // Delete button
     if (msg.username === localClientUsername) {
-        const deleteBtn = messageItem.querySelector('.msg-delete-btn');
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'msg-delete-btn';
+        deleteBtn.title = 'Delete message';
+        deleteBtn.type = 'button';
+        deleteBtn.textContent = '✕';
         deleteBtn.addEventListener('click', () => {
             socket.emit('delete message', { id: msg.id });
         });
+        row.appendChild(deleteBtn);
     }
-    
+
+    // Meta
+    const meta = document.createElement('div');
+    meta.className = 'msg-meta';
+
+    const userSpan = document.createElement('span');
+    userSpan.textContent = msg.username || '';
+
+    const timeSpan = document.createElement('span');
+    timeSpan.textContent = msg.time || '';
+
+    meta.appendChild(userSpan);
+    meta.appendChild(timeSpan);
+
+    messageItem.appendChild(row);
+    messageItem.appendChild(meta);
+
     messagesList.appendChild(messageItem);
 }
+
 
 // --- SOCKET SOCKET STREAM PIPELINES ---
 
